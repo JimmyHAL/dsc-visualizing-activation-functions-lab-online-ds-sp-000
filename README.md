@@ -17,7 +17,9 @@ For this lab, load the saved model `'cats_dogs_downsampled_with_augmentation_dat
 
 
 ```python
-# Your code here
+from keras.models import load_model
+model = load_model('cats_dogs_downsampled_with_augmentation_data.h5')
+model.summary()
 ```
 
 ## Load an Image
@@ -28,7 +30,15 @@ Load and display the image `'dog.1100.jpg'`.
 
 
 ```python
-# Your code here
+from keras.preprocessing import image
+import matplotlib.image as mpimg
+import matplotlib.pyplot as plt
+%matplotlib inline
+
+filename = 'dog.1100.jpg'
+img = image.load_img(filename, target_size=(150, 150))
+plt.imshow(img)
+plt.show()
 ```
 
 ## Transform the Image to a Tensor and Visualize Again
@@ -37,7 +47,20 @@ Recall that you should always preprocess images into tensors when using deep lea
 
 
 ```python
-# Your code here
+import numpy as np
+
+img_tensor = image.img_to_array(img)
+img_tensor = np.expand_dims(img_tensor, axis=0)
+
+# Follow the Original Model Preprocessing
+img_tensor /= 255.
+
+# Check tensor shape
+print(img_tensor.shape)
+
+# Preview an image
+plt.imshow(img_tensor[0])
+plt.show()
 ```
 
 ## Plot Feature Maps
@@ -48,7 +71,61 @@ To preview the results of the solution code, take a sneek peak at the *Intermedi
 
 
 ```python
-# Your code here
+from keras import models
+import math 
+
+# Extract model layer outputs
+layer_outputs = [layer.output for layer in model.layers[:8]]
+
+# Create a model for displaying the feature maps
+activation_model = models.Model(inputs=model.input, outputs=layer_outputs)
+
+activations = activation_model.predict(img_tensor)
+
+# Extract Layer Names for Labelling
+layer_names = []
+for layer in model.layers[:8]:
+    layer_names.append(layer.name)
+
+total_features = sum([a.shape[-1] for a in activations])
+total_features
+
+n_cols = 16
+n_rows = math.ceil(total_features / n_cols)
+
+
+iteration = 0
+fig , axes = plt.subplots(nrows=n_rows, ncols=n_cols, figsize=(n_cols, n_rows*1.5))
+
+for layer_n, layer_activation in enumerate(activations):
+    n_channels = layer_activation.shape[-1]
+    for ch_idx in range(n_channels):
+        row = iteration // n_cols
+        column = iteration % n_cols
+    
+        ax = axes[row, column]
+
+        channel_image = layer_activation[0,
+                                         :, :,
+                                         ch_idx]
+        # Post-process the feature to make it visually palatable
+        channel_image -= channel_image.mean()
+        channel_image /= channel_image.std()
+        channel_image *= 64
+        channel_image += 128
+        channel_image = np.clip(channel_image, 0, 255).astype('uint8')
+
+        ax.imshow(channel_image, aspect='auto', cmap='viridis')
+        ax.get_xaxis().set_ticks([])
+        ax.get_yaxis().set_ticks([])
+        
+        if ch_idx == 0:
+            ax.set_title(layer_names[layer_n], fontsize=10)
+        iteration += 1
+
+fig.subplots_adjust(hspace=1.25)
+plt.savefig('Intermediate_Activations_Visualized.pdf')
+plt.show()
 ```
 
 ## Summary
